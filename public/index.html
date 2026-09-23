@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TicketFlow — ITSM Platform Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --void:#0b0f17;--panel:#111826;--panel-2:#161f30;--line:#232e42;
+  --cyan:#5ccfe6;--amber:#ffb454;--ok:#7fd88f;--warn:#ffcc66;--bad:#ff6b6b;--gold:#f2c14e;
+  --text:#e7ecf3;--dim:#7d8ba0;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+body{background:var(--void);color:var(--text);font-family:'Inter',sans-serif;min-height:100%;}
+.mono{font-family:'JetBrains Mono',monospace;}
+a{color:inherit;}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
+::selection{background:var(--cyan);color:var(--void);}
+input,textarea,select{font-family:inherit;background:var(--panel-2);border:1px solid var(--line);color:var(--text);
+  border-radius:4px;padding:9px 11px;font-size:14px;width:100%;}
+input:disabled{color:var(--dim);}
+input:focus,textarea:focus,select:focus{outline:2px solid var(--cyan);outline-offset:1px;}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;}
+
+#authWrap{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px;}
+.auth-box{max-width:420px;width:100%;}
+.auth-box h1{font-size:22px;font-weight:600;}
+.auth-box h1 span{color:var(--cyan);}
+.auth-box .sub{color:var(--dim);font-size:13px;margin-top:6px;margin-bottom:22px;}
+.auth-tabs{display:flex;gap:2px;background:var(--line);border-radius:5px;padding:2px;margin-bottom:20px;}
+.auth-tab{flex:1;text-align:center;padding:8px;border-radius:4px;font-size:13px;color:var(--dim);}
+.auth-tab.active{background:var(--panel);color:var(--text);}
+.auth-form{display:none;}
+.auth-form.active{display:block;}
+.field{margin-bottom:13px;}
+.field label{display:block;font-size:11.5px;color:var(--dim);margin-bottom:6px;font-family:'JetBrains Mono',monospace;}
+.btn{padding:10px 18px;border-radius:5px;font-size:13.5px;font-weight:600;}
+.btn.primary{background:var(--cyan);color:var(--void);}
+.btn.primary:hover{opacity:.88;}
+.btn.ghost{border:1px solid var(--line);color:var(--text);}
+.btn.ghost:hover{border-color:var(--cyan);}
+.btn.block{width:100%;margin-top:4px;}
+.auth-note{margin-top:18px;font-size:11.5px;color:var(--dim);line-height:1.7;font-family:'JetBrains Mono',monospace;}
+.quick-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+.quick-row button{font-size:11.5px;border:1px solid var(--line);padding:6px 10px;border-radius:4px;color:var(--dim);}
+.quick-row button:hover{border-color:var(--cyan);color:var(--cyan);}
+
+#app{display:none;min-height:100vh;min-height:100dvh;}
+#app.active{display:flex;}
+.topbar{position:fixed;top:0;left:0;right:0;height:56px;background:var(--panel);border-bottom:1px solid var(--line);
+  display:flex;align-items:center;padding:0 18px;padding-top:env(safe-area-inset-top,0px);z-index:20;gap:16px;}
+.logo{font-weight:600;font-size:14.5px;}
+.logo span{color:var(--cyan);}
+.dept-badge{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--dim);border:1px solid var(--line);
+  padding:2px 8px;border-radius:3px;}
+.topbar .spacer{flex:1;}
+.me{display:flex;align-items:center;gap:10px;font-size:13px;}
+.me .badge{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--cyan);border:1px solid var(--cyan);
+  padding:2px 7px;border-radius:3px;}
+.logout{color:var(--dim);font-size:12.5px;}
+.logout:hover{color:var(--bad);}
+
+.sidebar{position:fixed;top:56px;left:0;bottom:0;width:200px;background:var(--panel);border-right:1px solid var(--line);
+  padding:18px 12px;display:flex;flex-direction:column;gap:2px;z-index:10;}
+.nav-btn{text-align:left;padding:10px 12px;border-radius:5px;font-size:13.5px;color:var(--dim);
+  border-left:2px solid transparent;display:flex;justify-content:space-between;align-items:center;}
+.nav-btn:hover{background:var(--panel-2);color:var(--text);}
+.nav-btn.active{color:var(--text);background:var(--panel-2);border-left-color:var(--cyan);}
+.nav-btn .count{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--amber);}
+.new-ticket-btn{margin-top:16px;background:var(--cyan);color:var(--void);padding:10px 12px;border-radius:5px;
+  font-size:13px;font-weight:600;text-align:center;}
+.new-ticket-btn:hover{opacity:.88;}
+
+main{margin-left:200px;margin-top:56px;padding:28px clamp(18px,3vw,36px);width:calc(100% - 200px);}
+.view{display:none;}
+.view.active{display:block;}
+.view-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px;flex-wrap:wrap;gap:10px;}
+.view-head h2{font-size:20px;font-weight:600;}
+.view-head .kicker{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--dim);margin-bottom:4px;}
+
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);
+  border-radius:5px;overflow:hidden;margin-bottom:28px;}
+.kpi{background:var(--panel);padding:16px;}
+.kpi .num{font-family:'JetBrains Mono',monospace;font-size:24px;color:var(--cyan);}
+.kpi .num.urgent{color:var(--bad);}
+.kpi .lbl{font-size:11.5px;color:var(--dim);margin-top:4px;}
+@media(max-width:700px){.kpis{grid-template-columns:repeat(2,1fr);}}
+
+.panel-block{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:18px;margin-bottom:20px;}
+.panel-block h3{font-size:12.5px;color:var(--dim);font-weight:500;margin-bottom:12px;font-family:'JetBrains Mono',monospace;}
+.activity-row{font-size:13px;padding:8px 0;border-top:1px solid var(--line);color:var(--dim);}
+.activity-row:first-child{border-top:none;}
+.activity-row .actor{color:var(--text);}
+.activity-row .time{float:right;font-family:'JetBrains Mono',monospace;font-size:11px;}
+
+.filter-row{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+.filter-row select, .filter-row input{width:auto;min-width:130px;}
+
+.tbl{width:100%;border-collapse:collapse;font-size:13.5px;}
+.tbl th{text-align:left;color:var(--dim);font-weight:500;font-size:11.5px;font-family:'JetBrains Mono',monospace;
+  padding:9px 10px;border-bottom:1px solid var(--line);}
+.tbl td{padding:11px 10px;border-bottom:1px solid var(--line);}
+.tbl tr.clickable:hover td{background:var(--panel-2);cursor:pointer;}
+.pill{font-family:'JetBrains Mono',monospace;font-size:10.5px;padding:3px 8px;border-radius:3px;display:inline-block;}
+.pill.status-open{background:rgba(92,207,230,.12);color:var(--cyan);}
+.pill.status-progress{background:rgba(255,180,84,.12);color:var(--amber);}
+.pill.status-resolved{background:rgba(127,216,143,.12);color:var(--ok);}
+.pill.status-closed{background:rgba(125,139,160,.15);color:var(--dim);}
+.pri{font-size:11.5px;font-family:'JetBrains Mono',monospace;}
+.pri.Critical{color:var(--bad);}
+.pri.High{color:var(--amber);}
+.pri.Medium{color:var(--cyan);}
+.pri.Low{color:var(--dim);}
+
+.rank-tbl td:first-child, .rank-tbl th:first-child{width:36px;}
+.rank-num{font-family:'JetBrains Mono',monospace;color:var(--dim);}
+.rank-num.top{color:var(--gold);font-weight:700;}
+.badge-chip{font-size:10.5px;font-family:'JetBrains Mono',monospace;padding:2px 7px;border-radius:3px;margin-left:6px;}
+.badge-chip.gold{background:rgba(242,193,78,.15);color:var(--gold);}
+.badge-chip.speed{background:rgba(92,207,230,.15);color:var(--cyan);}
+
+.cat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+@media(max-width:820px){.cat-grid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:560px){.cat-grid{grid-template-columns:1fr;}}
+.cat-card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:18px;text-align:left;}
+.cat-card:hover{border-color:var(--cyan);}
+.cat-card .ic{font-size:22px;margin-bottom:10px;}
+.cat-card .t{font-weight:600;font-size:14px;margin-bottom:6px;}
+.cat-card .d{font-size:12.5px;color:var(--dim);line-height:1.5;}
+
+.overlay{position:fixed;inset:0;background:rgba(6,9,14,.7);z-index:50;display:none;align-items:flex-start;
+  justify-content:center;padding:40px 16px;overflow-y:auto;}
+.overlay.active{display:flex;}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:8px;max-width:560px;width:100%;padding:24px;}
+.modal-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;gap:10px;}
+.modal-head h3{font-size:17px;font-weight:600;}
+.close-x{color:var(--dim);font-size:20px;line-height:1;padding:2px 6px;}
+.close-x:hover{color:var(--text);}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.desc-text{color:var(--dim);font-size:13.5px;line-height:1.6;margin-bottom:16px;white-space:pre-wrap;}
+.comments{margin-top:16px;border-top:1px solid var(--line);padding-top:14px;}
+.comment{font-size:13px;padding:9px 0;border-bottom:1px solid var(--line);}
+.comment .c-head{display:flex;justify-content:space-between;color:var(--dim);font-size:11px;
+  font-family:'JetBrains Mono',monospace;margin-bottom:4px;}
+.comment .c-body{color:var(--text);}
+.comment-form{display:flex;gap:8px;margin-top:12px;}
+.locked-note{font-size:12px;color:var(--dim);font-style:italic;margin-top:4px;}
+
+.approval-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--line);
+  flex-wrap:wrap;gap:10px;}
+.approval-row .who{font-size:13.5px;}
+.approval-row .who .sub{color:var(--dim);font-size:11.5px;display:block;margin-top:2px;font-family:'JetBrains Mono',monospace;}
+.approval-actions{display:flex;gap:8px;align-items:center;}
+.approval-actions select{width:auto;min-width:110px;}
+
+.audit-row{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px;align-items:baseline;}
+.audit-row .a-time{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--dim);white-space:nowrap;}
+.audit-row .a-body .actor{color:var(--cyan);font-weight:600;}
+.empty{color:var(--dim);font-size:13.5px;padding:24px 0;text-align:center;}
+@media(max-width:820px){
+  .sidebar{display:none;}
+  main{margin-left:0;width:100%;}
+  .field-row{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<div id="authWrap">
+  <div class="auth-box">
+    <h1>ticket<span>flow</span></h1>
+    <div class="sub mono">// internal ITSM demo — sign in or request access</div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" data-tab="signin">Sign in</button>
+      <button class="auth-tab" data-tab="signup">Sign up</button>
+    </div>
+
+    <form class="auth-form active" id="signinForm">
+      <div class="field"><label>email</label><input type="email" id="siEmail" required></div>
+      <div class="field"><label>password</label><input type="password" id="siPassword" required></div>
+      <button class="btn primary block" type="submit">Sign in</button>
+      <div class="quick-row">
+        <button type="button" data-quick="admin@demo.io">Admin demo</button>
+        <button type="button" data-quick="sarah@demo.io">IT staff demo</button>
+        <button type="button" data-quick="alex@demo.io">Employee demo</button>
+      </div>
+    </form>
+
+    <form class="auth-form" id="signupForm">
+      <div class="field"><label>full name</label><input id="suName" required></div>
+      <div class="field"><label>email</label><input type="email" id="suEmail" required></div>
+      <div class="field"><label>password</label><input type="password" id="suPassword" required></div>
+      <div class="field"><label>department</label>
+        <select id="suDept">
+          <option>IT</option><option>Finance</option><option>HR</option><option>Marketing</option>
+          <option>Operations</option><option>Sales</option><option>Facilities</option>
+        </select>
+      </div>
+      <button class="btn primary block" type="submit">Request access</button>
+    </form>
+
+    <div class="auth-note">demo credentials — admin@demo.io / admin123. accounts and tickets are stored in this browser only. <button id="resetDemo" style="color:var(--bad);text-decoration:underline;">reset demo data</button></div>
+  </div>
+</div>
+
+<div id="app">
+  <div class="topbar">
+    <div class="logo">ticket<span>flow</span></div>
+    <span class="dept-badge" id="deptBadge"></span>
+    <div class="spacer"></div>
+    <div class="me"><span id="meName"></span><span class="badge" id="meRole"></span></div>
+    <button class="logout" id="logoutBtn">sign out</button>
+  </div>
+  <div class="sidebar" id="sidebarNav"></div>
+
+  <main>
+    <section class="view" id="view-dashboard">
+      <div class="view-head"><div><div class="kicker">overview</div><h2>Dashboard</h2></div></div>
+      <div class="kpis">
+        <div class="kpi"><div class="num" id="kpiOpen">0</div><div class="lbl">open tickets</div></div>
+        <div class="kpi"><div class="num" id="kpiProgress">0</div><div class="lbl">in progress</div></div>
+        <div class="kpi"><div class="num urgent" id="kpiUrgent">0</div><div class="lbl">urgent (open)</div></div>
+        <div class="kpi"><div class="num" id="kpiResolvedMonth">0</div><div class="lbl">resolved this month</div></div>
+      </div>
+      <div class="panel-block"><h3>recent activity</h3><div id="recentActivity"></div></div>
+    </section>
+
+    <section class="view" id="view-tickets">
+      <div class="view-head"><div><div class="kicker">queue</div><h2>Tickets</h2></div></div>
+      <div class="filter-row">
+        <select id="fStatus"><option value="">all statuses</option><option>Open</option><option>In Progress</option><option>Resolved</option><option>Closed</option></select>
+        <select id="fPriority"><option value="">all urgency</option><option>Critical</option><option>High</option><option>Medium</option><option>Low</option></select>
+        <input id="fSearch" placeholder="search title...">
+      </div>
+      <table class="tbl">
+        <thead><tr><th>Title</th><th>Requester</th><th>Dept</th><th>Assigned to</th><th>Urgency</th><th>Status</th></tr></thead>
+        <tbody id="ticketRows"></tbody>
+      </table>
+      <div class="empty" id="ticketsEmpty" style="display:none;">no tickets match these filters</div>
+    </section>
+
+    <section class="view" id="view-mytickets">
+      <div class="view-head"><div><div class="kicker">my requests</div><h2>My Tickets</h2></div></div>
+      <table class="tbl">
+        <thead><tr><th>Title</th><th>Category</th><th>Urgency</th><th>Status</th></tr></thead>
+        <tbody id="myTicketRows"></tbody>
+      </table>
+      <div class="empty" id="myTicketsEmpty" style="display:none;">you haven't submitted any tickets yet</div>
+    </section>
+
+    <section class="view" id="view-catalog">
+      <div class="view-head"><div><div class="kicker">self-service</div><h2>Request Catalog</h2></div></div>
+      <div class="cat-grid" id="catalogGrid"></div>
+    </section>
+
+    <section class="view" id="view-leaderboard">
+      <div class="view-head"><div><div class="kicker">performance</div><h2>SLA &amp; Leaderboard</h2></div></div>
+      <div class="kpis">
+        <div class="kpi"><div class="num" id="lbOpen">0</div><div class="lbl">total open</div></div>
+        <div class="kpi"><div class="num" id="lbResolved">0</div><div class="lbl">total resolved</div></div>
+        <div class="kpi"><div class="num urgent" id="lbUrgent">0</div><div class="lbl">urgent open</div></div>
+        <div class="kpi"><div class="num" id="lbMonth">0</div><div class="lbl">closed this month</div></div>
+      </div>
+      <div class="panel-block">
+        <h3>agent leaderboard — resets 1st of each month</h3>
+        <table class="tbl rank-tbl">
+          <thead><tr><th>#</th><th>Agent</th><th>Closed (mo.)</th><th>Points</th><th>Avg. resolve time</th></tr></thead>
+          <tbody id="lbRows"></tbody>
+        </table>
+        <div class="empty" id="lbEmpty" style="display:none;">no tickets closed yet this month</div>
+      </div>
+    </section>
+
+    <section class="view" id="view-approvals">
+      <div class="view-head"><div><div class="kicker">admin</div><h2>Pending Approvals</h2></div></div>
+      <div class="panel-block"><div id="approvalRows"></div></div>
+    </section>
+
+    <section class="view" id="view-audit">
+      <div class="view-head"><div><div class="kicker">admin</div><h2>Audit Log</h2></div></div>
+      <div class="panel-block" style="padding:8px 18px;"><div id="auditRows"></div></div>
+    </section>
+  </main>
+</div>
+
+<div class="overlay" id="newModal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="ntHead">New ticket</h3><button class="close-x" data-close="newModal">×</button></div>
+    <div class="field-row">
+      <div class="field"><label>name</label><input id="ntName" disabled></div>
+      <div class="field"><label>department</label><input id="ntDept" disabled></div>
+    </div>
+    <div class="field"><label>email</label><input id="ntEmail" disabled></div>
+    <div class="field"><label>title</label><input id="ntSubject" placeholder="e.g. Need a monitor for new hire"></div>
+    <div class="field"><label>description</label><textarea id="ntDesc" rows="4" placeholder="Details..."></textarea></div>
+    <div class="field-row">
+      <div class="field"><label>urgency</label><select id="ntPriority"><option>Low</option><option selected>Medium</option><option>High</option><option>Critical</option></select></div>
+      <div class="field"><label>category</label>
+        <select id="ntCategory"><option>General</option><option>Purchase Request</option><option>AV Setup</option><option>Staff ID Card</option><option>Hardware</option><option>Software</option><option>Access Request</option></select>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">
+      <button class="btn ghost" data-close="newModal">Cancel</button>
+      <button class="btn primary" id="ntSubmit">Submit ticket</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="detailModal"><div class="modal" id="detailBody"></div></div>
+
+<script>
+(function(){
+  var API = '/api';
+  var TOKEN_KEY = 'ticketflow_token';
+  var state = { user:null, view:null };
+
+  function authHeaders(){
+    var t = localStorage.getItem(TOKEN_KEY);
+    return t ? {'Authorization':'Bearer '+t} : {};
+  }
+  async function api(path, opts){
+    opts = opts || {};
+    var res = await fetch(API+path, {
+      method: opts.method || 'GET',
+      headers: Object.assign({'Content-Type':'application/json'}, authHeaders()),
+      body: opts.body ? JSON.stringify(opts.body) : undefined
+    });
+    var data = null;
+    try { data = await res.json(); } catch(e){}
+    if(!res.ok){ throw new Error((data && data.error) || ('Request failed ('+res.status+')')); }
+    return data;
+  }
+
+  function escapeHtml(s){ var d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+  function fmtTime(ts){ var d=new Date(ts); return d.toLocaleDateString(undefined,{month:'short',day:'numeric'})+' '+d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'}); }
+  function relTime(ts){ var diff=Date.now()-ts,h=Math.floor(diff/3600000); if(h<1) return Math.floor(diff/60000)+'m ago'; if(h<24) return h+'h ago'; return Math.floor(h/24)+'d ago'; }
+  function statusClass(s){ return {Open:'status-open','In Progress':'status-progress',Resolved:'status-resolved',Closed:'status-closed'}[s]; }
+  function isITStaff(u){ return u.department==='IT'; }
+  function isAdmin(u){ return u.role==='admin'; }
+
+  /* ---------- AUTH ---------- */
+  document.querySelectorAll('.auth-tab').forEach(function(t){
+    t.addEventListener('click', function(){
+      document.querySelectorAll('.auth-tab').forEach(function(x){x.classList.remove('active');});
+      document.querySelectorAll('.auth-form').forEach(function(x){x.classList.remove('active');});
+      t.classList.add('active');
+      document.getElementById(t.dataset.tab+'Form').classList.add('active');
+    });
+  });
+
+  async function doLogin(email, password){
+    try{
+      var data = await api('/auth/login', {method:'POST', body:{email:email, password:password}});
+      localStorage.setItem(TOKEN_KEY, data.token);
+      await enterApp(data.user);
+    }catch(err){ alert(err.message); }
+  }
+  document.getElementById('signinForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    doLogin(document.getElementById('siEmail').value.trim(), document.getElementById('siPassword').value);
+  });
+  document.querySelectorAll('[data-quick]').forEach(function(b){
+    b.addEventListener('click', function(){ doLogin(b.dataset.quick, b.dataset.quick==='admin@demo.io'?'admin123':'demo123'); });
+  });
+  document.getElementById('signupForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    try{
+      await api('/auth/signup', {method:'POST', body:{
+        name: document.getElementById('suName').value.trim(),
+        email: document.getElementById('suEmail').value.trim(),
+        password: document.getElementById('suPassword').value,
+        department: document.getElementById('suDept').value
+      }});
+      alert('Access request submitted. An admin will review and approve your account.');
+      document.querySelector('.auth-tab[data-tab="signin"]').click();
+      document.getElementById('signupForm').reset();
+    }catch(err){ alert(err.message); }
+  });
+  var resetNote = document.getElementById('resetDemo');
+  if(resetNote){ resetNote.parentElement.innerHTML = 'demo credentials — admin@demo.io / admin123. data is stored in a real Postgres database shared by everyone who opens this page.'; }
+
+  document.getElementById('logoutBtn').addEventListener('click', function(){
+    localStorage.removeItem(TOKEN_KEY);
+    state.user = null;
+    document.getElementById('app').classList.remove('active');
+    document.getElementById('authWrap').style.display='flex';
+  });
+
+  async function enterApp(user){
+    state.user = user;
+    document.getElementById('authWrap').style.display='none';
+    document.getElementById('app').classList.add('active');
+    document.getElementById('meName').textContent = user.name;
+    document.getElementById('meRole').textContent = isAdmin(user)?'admin':(isITStaff(user)?'IT staff':'employee');
+    document.getElementById('deptBadge').textContent = user.department;
+    buildNav();
+  }
+
+  // Try to restore a session from a saved token on page load.
+  (async function boot(){
+    var t = localStorage.getItem(TOKEN_KEY);
+    if(!t) return;
+    try{
+      var data = await api('/auth/me');
+      await enterApp(data.user);
+    }catch(e){ localStorage.removeItem(TOKEN_KEY); }
+  })();
+
+  /* ---------- NAV ---------- */
+  function buildNav(){
+    var items;
+    if(isITStaff(state.user)){
+      items = [{id:'dashboard',label:'Dashboard'},{id:'tickets',label:'Tickets'},{id:'leaderboard',label:'SLA & Leaderboard'}];
+      if(isAdmin(state.user)){
+        items.push({id:'approvals',label:'Approvals',countKey:'approvals'});
+        items.push({id:'audit',label:'Audit Log'});
+      }
+    } else {
+      items = [{id:'mytickets',label:'My Tickets'},{id:'catalog',label:'Request Catalog'}];
+    }
+    var nav = document.getElementById('sidebarNav');
+    nav.innerHTML = items.map(function(it){
+      return '<button class="nav-btn" data-view="'+it.id+'">'+it.label+' <span class="count" id="navcount-'+it.id+'"></span></button>';
+    }).join('') + (isITStaff(state.user) ? '' : '<button class="new-ticket-btn" id="newTicketBtn">+ New ticket</button>');
+    nav.querySelectorAll('.nav-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){ switchView(btn.dataset.view); });
+    });
+    if(!isITStaff(state.user)){
+      document.getElementById('newTicketBtn').addEventListener('click', function(){ openNewTicket(); });
+    }
+    if(isAdmin(state.user)){
+      api('/accounts/pending').then(function(d){
+        var el = document.getElementById('navcount-approvals');
+        if(el && d.pending.length) el.textContent = d.pending.length;
+      }).catch(function(){});
+    }
+    switchView(items[0].id);
+  }
+  function switchView(id){
+    state.view = id;
+    document.querySelectorAll('.nav-btn').forEach(function(b){ b.classList.toggle('active', b.dataset.view===id); });
+    document.querySelectorAll('.view').forEach(function(v){ v.classList.remove('active'); });
+    document.getElementById('view-'+id).classList.add('active');
+    renderView(id);
+  }
+  function renderView(id){
+    if(id==='dashboard') renderDashboard();
+    if(id==='tickets') renderTicketRows();
+    if(id==='mytickets') renderMyTickets();
+    if(id==='catalog') renderCatalog();
+    if(id==='leaderboard') renderLeaderboard();
+    if(id==='approvals') renderApprovals();
+    if(id==='audit') renderAudit();
+  }
+
+  /* ---------- CATALOG / NEW TICKET ---------- */
+  var CATALOG = [
+    {ic:'🛒', t:'Purchase Request', d:'Approval for hardware, software, or service purchases.', cat:'Purchase Request'},
+    {ic:'🎥', t:'AV Setup', d:'AV equipment setup for meetings, rooms, or events.', cat:'AV Setup'},
+    {ic:'🪪', t:'Staff ID Card', d:'New or replacement staff ID / building access card.', cat:'Staff ID Card'},
+    {ic:'💻', t:'New Hardware', d:'Request a laptop, monitor, or peripheral.', cat:'Hardware'},
+    {ic:'🧩', t:'Software Install', d:'Request software installed or licensed.', cat:'Software'},
+    {ic:'🔑', t:'Account Access', d:'Request access to a system, folder, or app.', cat:'Access Request'}
+  ];
+  function renderCatalog(){
+    document.getElementById('catalogGrid').innerHTML = CATALOG.map(function(c,i){
+      return '<button class="cat-card" data-i="'+i+'"><div class="ic">'+c.ic+'</div><div class="t">'+c.t+'</div><div class="d">'+c.d+'</div></button>';
+    }).join('');
+    document.querySelectorAll('.cat-card').forEach(function(card){
+      card.addEventListener('click', function(){ openNewTicket(CATALOG[card.dataset.i]); });
+    });
+  }
+  function openNewTicket(preset){
+    document.getElementById('ntHead').textContent = preset ? preset.t : 'New ticket';
+    document.getElementById('ntName').value = state.user.name;
+    document.getElementById('ntEmail').value = state.user.email;
+    document.getElementById('ntDept').value = state.user.department;
+    document.getElementById('ntSubject').value = preset ? preset.t+' — ' : '';
+    document.getElementById('ntDesc').value = '';
+    document.getElementById('ntCategory').value = preset ? preset.cat : 'General';
+    document.getElementById('newModal').classList.add('active');
+  }
+  document.getElementById('ntSubmit').addEventListener('click', async function(){
+    var subj = document.getElementById('ntSubject').value.trim();
+    if(!subj){ alert('Title is required.'); return; }
+    try{
+      await api('/tickets', {method:'POST', body:{
+        subject: subj,
+        description: document.getElementById('ntDesc').value.trim(),
+        priority: document.getElementById('ntPriority').value,
+        category: document.getElementById('ntCategory').value
+      }});
+      document.getElementById('newModal').classList.remove('active');
+      renderView(state.view);
+    }catch(err){ alert(err.message); }
+  });
+  document.querySelectorAll('[data-close]').forEach(function(el){
+    el.addEventListener('click', function(){ document.getElementById(el.dataset.close).classList.remove('active'); });
+  });
+
+  /* ---------- TICKET TABLES ---------- */
+  async function renderTicketRows(){
+    var params = new URLSearchParams();
+    var status = document.getElementById('fStatus').value;
+    var priority = document.getElementById('fPriority').value;
+    var search = document.getElementById('fSearch').value;
+    if(status) params.set('status', status);
+    if(priority) params.set('priority', priority);
+    if(search) params.set('search', search);
+    var data = await api('/tickets?'+params.toString());
+    var rows = data.tickets;
+    document.getElementById('ticketRows').innerHTML = rows.map(function(t){
+      return '<tr class="clickable" data-id="'+t.id+'"><td>'+escapeHtml(t.subject)+'</td><td>'+t.requester+'</td><td>'+t.department+'</td>'+
+        '<td>'+(t.assignee||'—')+'</td><td class="pri '+t.priority+'">'+t.priority+'</td>'+
+        '<td><span class="pill '+statusClass(t.status)+'">'+t.status+'</span></td></tr>';
+    }).join('');
+    document.getElementById('ticketsEmpty').style.display = rows.length?'none':'block';
+    document.querySelectorAll('#ticketRows tr').forEach(function(row){ row.addEventListener('click', function(){ openDetail(row.dataset.id); }); });
+  }
+  ['fStatus','fPriority','fSearch'].forEach(function(id){ document.getElementById(id).addEventListener('input', renderTicketRows); });
+
+  async function renderMyTickets(){
+    var data = await api('/tickets');
+    var mine = data.tickets;
+    document.getElementById('myTicketRows').innerHTML = mine.map(function(t){
+      return '<tr class="clickable" data-id="'+t.id+'"><td>'+escapeHtml(t.subject)+'</td><td>'+t.category+'</td>'+
+        '<td class="pri '+t.priority+'">'+t.priority+'</td><td><span class="pill '+statusClass(t.status)+'">'+t.status+'</span></td></tr>';
+    }).join('');
+    document.getElementById('myTicketsEmpty').style.display = mine.length?'none':'block';
+    document.querySelectorAll('#myTicketRows tr').forEach(function(row){ row.addEventListener('click', function(){ openDetail(row.dataset.id, true); }); });
+  }
+
+  var itStaffCache = null;
+  async function getITStaffNames(){
+    // derived from the leaderboard endpoint's agent list — cheap, cached per session
+    if(itStaffCache) return itStaffCache;
+    try{
+      var d = await api('/stats/leaderboard');
+      itStaffCache = d.leaderboard.map(function(a){return a.name;});
+    }catch(e){ itStaffCache = []; }
+    return itStaffCache;
+  }
+
+  async function openDetail(id, readOnly){
+    var data = await api('/tickets/'+id);
+    var t = data.ticket;
+    var canManage = isITStaff(state.user) && !readOnly;
+    var agentNames = canManage ? await getITStaffNames() : [];
+    var agentOpts = ['<option value="">unassigned</option>'].concat(agentNames.map(function(n){
+      return '<option '+(t.assignee===n?'selected':'')+'>'+n+'</option>';
+    })).join('');
+    var statusOpts = ['Open','In Progress','Resolved','Closed'].map(function(s){ return '<option '+(t.status===s?'selected':'')+'>'+s+'</option>'; }).join('');
+    var commentsHtml = t.comments.length ? t.comments.map(function(c){
+      return '<div class="comment"><div class="c-head"><span class="actor" style="color:var(--cyan)">'+c.author+'</span><span>'+relTime(c.time)+'</span></div><div class="c-body">'+escapeHtml(c.body)+'</div></div>';
+    }).join('') : '<div class="empty" style="padding:10px 0;">no comments yet</div>';
+
+    document.getElementById('detailBody').innerHTML =
+      '<div class="modal-head"><div><h3>'+t.id+' — '+escapeHtml(t.subject)+'</h3>'+
+      '<div class="mono" style="font-size:11.5px;color:var(--dim);margin-top:4px;">'+t.department+' · opened by '+t.requester+' · '+fmtTime(t.createdAt)+'</div></div>'+
+      '<button class="close-x" data-close="detailModal">×</button></div>'+
+      '<div class="desc-text">'+escapeHtml(t.description)+'</div>'+
+      '<div class="field-row">'+
+        '<div class="field"><label>status</label>'+(canManage?'<select id="dStatus">'+statusOpts+'</select>':'<div><span class="pill '+statusClass(t.status)+'">'+t.status+'</span></div>')+'</div>'+
+        '<div class="field"><label>assigned to</label>'+(canManage?'<select id="dAssignee">'+agentOpts+'</select>':'<div style="font-size:13.5px;">'+(t.assignee||'unassigned')+'</div>')+'</div>'+
+      '</div>'+
+      '<div class="field-row"><div class="field"><label>urgency</label><div class="pri '+t.priority+'">'+t.priority+'</div></div>'+
+      '<div class="field"><label>category</label><div style="font-size:13.5px;">'+t.category+'</div></div></div>'+
+      (canManage ? '<button class="btn primary" id="dSave" style="width:100%;margin-top:4px;">Save changes</button>' : '<div class="locked-note">'+(readOnly?'IT staff manage status and assignment.':'viewing as requester.')+'</div>')+
+      '<div class="comments"><h3 class="mono" style="font-size:11.5px;color:var(--dim);margin-bottom:10px;">comments</h3>'+commentsHtml+
+      '<div class="comment-form"><input id="dComment" placeholder="add a comment..."><button class="btn ghost" id="dCommentBtn">Post</button></div></div>';
+
+    document.getElementById('detailModal').classList.add('active');
+    document.querySelectorAll('#detailModal [data-close]').forEach(function(el){ el.addEventListener('click', function(){ document.getElementById('detailModal').classList.remove('active'); }); });
+    if(canManage){
+      document.getElementById('dSave').addEventListener('click', async function(){
+        try{
+          await api('/tickets/'+id, {method:'PATCH', body:{
+            status: document.getElementById('dStatus').value,
+            assigneeName: document.getElementById('dAssignee').value
+          }});
+          document.getElementById('detailModal').classList.remove('active');
+          renderView(state.view);
+        }catch(err){ alert(err.message); }
+      });
+    }
+    document.getElementById('dCommentBtn').addEventListener('click', async function(){
+      var v = document.getElementById('dComment').value.trim(); if(!v) return;
+      try{ await api('/tickets/'+id+'/comments', {method:'POST', body:{body:v}}); openDetail(id, readOnly); }
+      catch(err){ alert(err.message); }
+    });
+  }
+
+  /* ---------- DASHBOARD ---------- */
+  async function renderDashboard(){
+    var d = await api('/stats/dashboard');
+    document.getElementById('kpiOpen').textContent = d.open;
+    document.getElementById('kpiProgress').textContent = d.inProgress;
+    document.getElementById('kpiUrgent').textContent = d.urgentOpen;
+    document.getElementById('kpiResolvedMonth').textContent = d.resolvedThisMonth;
+    document.getElementById('recentActivity').innerHTML = d.recentActivity.length ? d.recentActivity.map(function(a){
+      return '<div class="activity-row"><span class="time">'+relTime(a.time)+'</span><span class="actor">'+a.actor+'</span> '+a.action+' <span class="mono">'+a.ticketId+'</span></div>';
+    }).join('') : '<div class="empty">no activity yet</div>';
+  }
+
+  /* ---------- LEADERBOARD ---------- */
+  var BADGE_LABEL = {top_closer:'<span class="badge-chip gold">🏆 top closer</span>', speed_wizard:'<span class="badge-chip speed">⚡ speed wizard</span>'};
+  async function renderLeaderboard(){
+    var d = await api('/stats/leaderboard');
+    document.getElementById('lbOpen').textContent = d.totalOpen;
+    document.getElementById('lbResolved').textContent = d.totalResolved;
+    document.getElementById('lbUrgent').textContent = d.urgentOpen;
+    document.getElementById('lbMonth').textContent = d.closedThisMonth;
+    document.getElementById('lbRows').innerHTML = d.leaderboard.map(function(s){
+      var badges = s.badges.map(function(b){ return BADGE_LABEL[b]||''; }).join('');
+      return '<tr><td class="rank-num '+(s.rank===1?'top':'')+'">'+s.rank+'</td><td>'+s.name+badges+'</td><td>'+s.closed+'</td><td class="mono">'+s.points+'</td>'+
+        '<td>'+(s.avgResolutionHours!==null ? s.avgResolutionHours.toFixed(1)+'h' : '—')+'</td></tr>';
+    }).join('');
+    document.getElementById('lbEmpty').style.display = d.leaderboard.some(function(s){return s.closed>0;}) ? 'none':'block';
+  }
+
+  /* ---------- APPROVALS ---------- */
+  async function renderApprovals(){
+    var d = await api('/accounts/pending');
+    var pending = d.pending;
+    document.getElementById('approvalRows').innerHTML = pending.length ? pending.map(function(a){
+      return '<div class="approval-row" data-id="'+a.id+'"><div class="who">'+a.name+'<span class="sub">'+a.email+' · requested '+relTime(a.createdAt)+'</span></div>'+
+        '<div class="approval-actions"><select class="deptSel">'+
+          ['IT','Finance','HR','Marketing','Operations','Sales','Facilities'].map(function(dep){return '<option '+(dep===a.department?'selected':'')+'>'+dep+'</option>';}).join('')+
+        '</select><button class="btn primary approveBtn">Approve</button><button class="btn ghost denyBtn">Deny</button></div></div>';
+    }).join('') : '<div class="empty">no pending requests</div>';
+    document.querySelectorAll('.approval-row').forEach(function(row){
+      var id = row.dataset.id;
+      row.querySelector('.approveBtn').addEventListener('click', async function(){
+        await api('/accounts/'+id+'/approve', {method:'POST', body:{department: row.querySelector('.deptSel').value}});
+        renderApprovals(); buildNav();
+      });
+      row.querySelector('.denyBtn').addEventListener('click', async function(){
+        await api('/accounts/'+id+'/deny', {method:'POST', body:{}});
+        renderApprovals(); buildNav();
+      });
+    });
+  }
+
+  async function renderAudit(){
+    var d = await api('/stats/audit');
+    document.getElementById('auditRows').innerHTML = d.audit.map(function(a){
+      return '<div class="audit-row"><div class="a-time">'+fmtTime(a.time)+'</div><div class="a-body"><span class="actor">'+a.actor+'</span> '+a.action+' <span class="mono">'+a.ticketId+'</span></div></div>';
+    }).join('') || '<div class="empty">no audit entries</div>';
+  }
+})();
+</script>
+</body></html>
