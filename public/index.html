@@ -14,9 +14,13 @@
   --text:#e7ecf3;--dim:#7d8ba0;
   box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
 }
+:root[data-theme="light"]{
+  --void:#f5f7fa;--panel:#ffffff;--panel-2:#eef1f6;--line:#dde3ec;
+  --text:#1b2330;--dim:#5b6b80;
+}
 *{box-sizing:border-box;margin:0;padding:0;}
 html{scroll-padding-top:env(safe-area-inset-top,0px);}
-body{background:var(--void);color:var(--text);font-family:'Inter',sans-serif;min-height:100%;}
+body{background:var(--void);color:var(--text);font-family:'Inter',sans-serif;min-height:100%;transition:background .15s,color .15s;}
 .mono{font-family:'JetBrains Mono',monospace;}
 a{color:inherit;}
 button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
@@ -46,9 +50,6 @@ input:focus,textarea:focus,select:focus{outline:2px solid var(--cyan);outline-of
 .btn.ghost:hover{border-color:var(--cyan);}
 .btn.block{width:100%;margin-top:4px;}
 .auth-note{margin-top:18px;font-size:11.5px;color:var(--dim);line-height:1.7;font-family:'JetBrains Mono',monospace;}
-.quick-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
-.quick-row button{font-size:11.5px;border:1px solid var(--line);padding:6px 10px;border-radius:4px;color:var(--dim);}
-.quick-row button:hover{border-color:var(--cyan);color:var(--cyan);}
 
 #app{display:none;min-height:100vh;min-height:100dvh;}
 #app.active{display:flex;}
@@ -59,9 +60,19 @@ input:focus,textarea:focus,select:focus{outline:2px solid var(--cyan);outline-of
 .dept-badge{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--dim);border:1px solid var(--line);
   padding:2px 8px;border-radius:3px;}
 .topbar .spacer{flex:1;}
-.me{display:flex;align-items:center;gap:10px;font-size:13px;}
+.me{display:flex;align-items:center;gap:10px;font-size:13px;position:relative;cursor:pointer;padding:6px 8px;border-radius:5px;}
+.me:hover{background:var(--panel-2);}
 .me .badge{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--cyan);border:1px solid var(--cyan);
   padding:2px 7px;border-radius:3px;}
+.me-menu{position:absolute;top:calc(100% + 8px);right:0;background:var(--panel);border:1px solid var(--line);
+  border-radius:6px;min-width:200px;padding:6px;display:none;box-shadow:0 8px 24px rgba(0,0,0,.3);z-index:30;}
+.me-menu.open{display:block;}
+.me-menu button{width:100%;text-align:left;padding:9px 10px;border-radius:4px;font-size:13px;color:var(--text);}
+.me-menu button:hover{background:var(--panel-2);}
+.theme-row{display:flex;gap:6px;padding:4px;}
+.theme-row button{flex:1;text-align:center;font-size:12px;border:1px solid var(--line);border-radius:4px;padding:7px;}
+.theme-row button.active{border-color:var(--cyan);color:var(--cyan);}
+.me-menu hr{border:none;border-top:1px solid var(--line);margin:6px 2px;}
 .logout{color:var(--dim);font-size:12.5px;}
 .logout:hover{color:var(--bad);}
 
@@ -184,11 +195,6 @@ main{margin-left:200px;margin-top:56px;padding:28px clamp(18px,3vw,36px);width:c
       <div class="field"><label>email</label><input type="email" id="siEmail" required></div>
       <div class="field"><label>password</label><input type="password" id="siPassword" required></div>
       <button class="btn primary block" type="submit">Sign in</button>
-      <div class="quick-row">
-        <button type="button" data-quick="admin@demo.io">Admin demo</button>
-        <button type="button" data-quick="sarah@demo.io">IT staff demo</button>
-        <button type="button" data-quick="alex@demo.io">Employee demo</button>
-      </div>
     </form>
 
     <form class="auth-form" id="signupForm">
@@ -204,7 +210,7 @@ main{margin-left:200px;margin-top:56px;padding:28px clamp(18px,3vw,36px);width:c
       <button class="btn primary block" type="submit">Request access</button>
     </form>
 
-    <div class="auth-note">demo credentials — admin@demo.io / admin123. accounts and tickets are stored in this browser only. <button id="resetDemo" style="color:var(--bad);text-decoration:underline;">reset demo data</button></div>
+    <div class="auth-note">new here? use the Sign up tab to request access — an admin will review and approve your account.</div>
   </div>
 </div>
 
@@ -213,7 +219,17 @@ main{margin-left:200px;margin-top:56px;padding:28px clamp(18px,3vw,36px);width:c
     <div class="logo">ticket<span>flow</span></div>
     <span class="dept-badge" id="deptBadge"></span>
     <div class="spacer"></div>
-    <div class="me"><span id="meName"></span><span class="badge" id="meRole"></span></div>
+    <div class="me" id="meMenuBtn">
+      <span id="meName"></span><span class="badge" id="meRole"></span>
+      <div class="me-menu" id="meMenu">
+        <div class="theme-row">
+          <button type="button" id="themeLight">☀ Light</button>
+          <button type="button" id="themeDark">🌙 Dark</button>
+        </div>
+        <hr>
+        <button type="button" id="openPwModal">Reset password</button>
+      </div>
+    </div>
     <button class="logout" id="logoutBtn">sign out</button>
   </div>
   <div class="sidebar" id="sidebarNav"></div>
@@ -313,6 +329,19 @@ main{margin-left:200px;margin-top:56px;padding:28px clamp(18px,3vw,36px);width:c
 
 <div class="overlay" id="detailModal"><div class="modal" id="detailBody"></div></div>
 
+<div class="overlay" id="pwModal">
+  <div class="modal">
+    <div class="modal-head"><h3>Reset password</h3><button class="close-x" data-close="pwModal">×</button></div>
+    <div class="field"><label>current password</label><input type="password" id="pwCurrent"></div>
+    <div class="field"><label>new password</label><input type="password" id="pwNew"></div>
+    <div class="field"><label>confirm new password</label><input type="password" id="pwConfirm"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">
+      <button class="btn ghost" data-close="pwModal">Cancel</button>
+      <button class="btn primary" id="pwSubmit">Update password</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (function(){
   var API = '/api';
@@ -364,9 +393,6 @@ main{margin-left:200px;margin-top:56px;padding:28px clamp(18px,3vw,36px);width:c
     e.preventDefault();
     doLogin(document.getElementById('siEmail').value.trim(), document.getElementById('siPassword').value);
   });
-  document.querySelectorAll('[data-quick]').forEach(function(b){
-    b.addEventListener('click', function(){ doLogin(b.dataset.quick, b.dataset.quick==='admin@demo.io'?'admin123':'demo123'); });
-  });
   document.getElementById('signupForm').addEventListener('submit', async function(e){
     e.preventDefault();
     try{
@@ -381,14 +407,55 @@ main{margin-left:200px;margin-top:56px;padding:28px clamp(18px,3vw,36px);width:c
       document.getElementById('signupForm').reset();
     }catch(err){ alert(err.message); }
   });
-  var resetNote = document.getElementById('resetDemo');
-  if(resetNote){ resetNote.parentElement.innerHTML = 'demo credentials — admin@demo.io / admin123. data is stored in a real Postgres database shared by everyone who opens this page.'; }
 
   document.getElementById('logoutBtn').addEventListener('click', function(){
     localStorage.removeItem(TOKEN_KEY);
     state.user = null;
     document.getElementById('app').classList.remove('active');
     document.getElementById('authWrap').style.display='flex';
+  });
+
+  /* ---------- THEME ---------- */
+  var THEME_KEY = 'ticketflow_theme';
+  function applyTheme(t){
+    document.documentElement.setAttribute('data-theme', t);
+    localStorage.setItem(THEME_KEY, t);
+    document.getElementById('themeLight').classList.toggle('active', t==='light');
+    document.getElementById('themeDark').classList.toggle('active', t==='dark');
+  }
+  applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
+  document.getElementById('themeLight').addEventListener('click', function(){ applyTheme('light'); });
+  document.getElementById('themeDark').addEventListener('click', function(){ applyTheme('dark'); });
+
+  /* ---------- USER DROPDOWN ---------- */
+  var meBtn = document.getElementById('meMenuBtn');
+  var meMenu = document.getElementById('meMenu');
+  meBtn.addEventListener('click', function(e){
+    e.stopPropagation();
+    meMenu.classList.toggle('open');
+  });
+  document.addEventListener('click', function(){ meMenu.classList.remove('open'); });
+  meMenu.addEventListener('click', function(e){ e.stopPropagation(); });
+
+  /* ---------- PASSWORD RESET ---------- */
+  document.getElementById('openPwModal').addEventListener('click', function(){
+    meMenu.classList.remove('open');
+    document.getElementById('pwCurrent').value = '';
+    document.getElementById('pwNew').value = '';
+    document.getElementById('pwConfirm').value = '';
+    document.getElementById('pwModal').classList.add('active');
+  });
+  document.getElementById('pwSubmit').addEventListener('click', async function(){
+    var current = document.getElementById('pwCurrent').value;
+    var next = document.getElementById('pwNew').value;
+    var confirm = document.getElementById('pwConfirm').value;
+    if(!current || !next){ alert('Fill in both password fields.'); return; }
+    if(next !== confirm){ alert('New password and confirmation don\'t match.'); return; }
+    try{
+      await api('/auth/change-password', {method:'POST', body:{currentPassword:current, newPassword:next}});
+      alert('Password updated.');
+      document.getElementById('pwModal').classList.remove('active');
+    }catch(err){ alert(err.message); }
   });
 
   async function enterApp(user){

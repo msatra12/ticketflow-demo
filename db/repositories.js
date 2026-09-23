@@ -22,6 +22,11 @@ const Accounts = {
     return rows[0] || null;
   },
   verifyPassword: (account, password) => bcrypt.compareSync(password, account.password_hash),
+  updatePassword: async (id, newPlainPassword) => {
+    const hash = bcrypt.hashSync(newPlainPassword, 8);
+    const { rows } = await pool.query('UPDATE accounts SET password_hash=$2 WHERE id=$1 RETURNING *', [id, hash]);
+    return rows[0] || null;
+  },
   itStaff: async () => (await pool.query(`SELECT * FROM accounts WHERE department='IT' AND status='approved'`)).rows
 };
 

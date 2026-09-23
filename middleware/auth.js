@@ -1,28 +1,55 @@
-// middleware/auth.js
-const jwt = require('jsonwebtoken');
+// routes/auth.js
+const router = require('express').Router();
 const { Accounts } = require('../db/repositories');
+const { signToken, requireAuth } = require('../middleware/auth');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-secret-change-me';
-
-function signToken(account) {
-  return jwt.sign({ sub: account.id }, JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '7d' });
+function publicAccount(a) {
+  return { id: a.id, name: a.name, email: a.email, department: a.department, role: a.role, status: a.status, createdAt: new Date(a.created_at).getTime() };
 }
 
-async function requireAuth(req, res, next) {
-  const header = req.headers.authorization || '';
-  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
-  if (!token) return res.status(401).json({ error: 'Missing bearer token' });
+router.post('/signup', async (req, res, next) => {
   try {
-    const payload = jwt.verify(token, JWT_SECRET);
-    const account = await Accounts.findById(payload.sub);
-    if (!account || account.status !== 'approved') {
-      return res.status(401).json({ error: 'Account not found or not approved' });
+    const { name, email, password, department } = req.body || {};
+    if (!name || !email || !password || !department) {
+      return res.status(400).json({ error: 'name, email, password, and department are required' });
     }
-    req.user = account;
-    next();
-  } catch (err) {
-    res.status(401).json({ error: 'Invalid or expired token' });
-  }
-}
+    if (await Accounts.findByEmail(email)) {
+      return res.status(409).json({ error: 'An account with that email already exists' });
+    }
+    const account = await Accounts.create({ name, email, password, department });
+    res.status(201).json({ message: 'Access request submitted. An admin will review and approve your account.', account: publicAccount(account) });
+  } catch (err) { next(err); }
+});
 
-module.exports = { signToken, requireAuth, JWT_SECRET };
+router.post('/login', async (req, res, next) => {
+  try {
+    const { email, password } = req.body || {};
+    const account = await Accounts.findByEmail(email || '');
+    if (!account) return res.status(401).json({ error: 'No account found with that email' });
+    if (account.status === 'pending') return res.status(403).json({ error: 'Account is awaiting admin approval' });
+    if (account.status === 'denied') return res.status(403).json({ error: 'Access request was denied' });
+    if (!Accounts.verifyPassword(account, password || '')) return res.status(401).json({ error: 'Incorrect password' });
+    res.json({ token: signToken(account), user: publicAccount(account) });
+  } catch (err) { next(err); }
+});
+
+router.get('/me', requireAuth, (req, res) => res.json({ user: publicAccount(req.user) }));
+
+router.post('/change-password', requireAuth, async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body || {};
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'currentPassword and newPassword are required' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters' });
+    }
+    if (!Accounts.verifyPassword(req.user, currentPassword)) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+    await Accounts.updatePassword(req.user.id, newPassword);
+    res.json({ message: 'Password updated' });
+  } catch (err) { next(err); }
+});
+
+module.exports = { router, publicAccount };
