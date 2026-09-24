@@ -67,7 +67,7 @@ Reset the database anytime: `npm run seed:reset`.
 
 | Role     | Email           | Password |
 |----------|-----------------|----------|
-| Admin    | admin@demo.io   | admin123 |
+| Admin    | admin@demo.io   | ******** |
 | IT staff | sarah@demo.io   | demo123  |
 | Employee | alex@demo.io    | demo123  |
 
